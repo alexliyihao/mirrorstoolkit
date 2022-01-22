@@ -20,9 +20,25 @@ class AnnotoriousInterpreter(_Translater):
             data: list[json], a list of annotorious annotations
         Return:
             if <data> is interpretable in <format>, return true
-            else raise a ValueError
+            else raise a AssertionError, ValueError, TypeError or KeyError
         """
-        pass
+        return all([self._validate_annotorious_individual(self._dejsonized(annotation))
+                    for annotation in data])
+
+    def _validate_annotorious_individual(self,data):
+        """
+        individually check if each individual annotation is Annotorious format
+        """
+        try:
+            assert data["type"] == "Annotation"
+            assert data["body"]
+            assert data["target"]
+            assert data["target"]["selector"]["type"] == "SvgSelector"
+            assert data["target"]["selector"]["value"]
+        except (AssertionError, KeyError):
+            raise
+        else:
+            return True
 
     def _to_coco(self, data):
         """
