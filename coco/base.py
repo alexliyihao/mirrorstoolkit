@@ -48,7 +48,7 @@ class _Translater(object):
         Args:
             data: json,numpy array, or whatever other future format the data input
         Return:
-            coco_output: json, the coco-format annotations
+            coco_output: json(dict), the coco-format annotations
         """
         pass
 

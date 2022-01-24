@@ -1,4 +1,6 @@
 from .base import _Translater
+import re
+import cv2
 
 class AnnotoriousInterpreter(_Translater):
     """
@@ -44,7 +46,99 @@ class AnnotoriousInterpreter(_Translater):
         """
         translate the annotorious annotations to COCO format
         """
-        pass
+        categories = {}
+        annotations = []
+        licenses = self._licenses_prepraration()
+        images = self._image_processor()
+
+        for annotation in data:
+            label = self._get_label(annotation)
+            if label not in categories.keys():
+                categories[label] = len(categories)+1
+            category_id = categories[label]
+            contour_numeric, area, bbox = self._process_contour(annotation)
+            annotations.append({
+                "segmentation": [contour_numeric],
+                "area": area,
+                "iscrowd": 0,
+                "image_id": 0,#TBF here
+                "bbox": bbox,
+                "category_id": category_id,
+                "id": 0 #TBF here
+            })
+        categories = self._tidy_categories(categories)
+        return {"licenses":licenses,
+                "images":images,
+                "annotations": annotations,
+                "categories": categories
+                }
+
+    def _image_processor(self):
+        """
+        To be finish: how should I encode with all the images?
+        {
+        "license": 4,
+        "file_name": "000000397133.jpg",
+        "coco_url": "http://images.cocodataset.org/val2017/000000397133.jpg",
+        "height": 427,
+        "width": 640,
+        "date_captured": "2013-11-14 17:02:52",
+        "flickr_url": "http://farm7.staticflickr.com/6116/6255196340_da26cf2c9e_z.jpg",
+        "id": 397133
+        },
+        """
+        return []
+
+    def _licenses_prepraration(self):
+        """
+        To be finish: how should I encode with all the license?
+        {
+        "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",
+        "id": 1,
+        "name": "Attribution-NonCommercial-ShareAlike License"
+        },
+        """
+        return []
+
+    def _tidy_categories(self, categories):
+        """
+        re-format categories dictionary, this funtion might need later modification
+        """
+        # current setting:
+        # each label is set as a supercategory,
+        # the sub-category share its name with supercategory
+        return [{"supercategory":category, "id": id,"name": category}
+                for category, id in categories.items()]
+
+    def _get_label(self, annotation):
+        """
+        for a individual annotation, get the which is saved as "tagging"
+        args:
+            annotation: dict(json), a individual annotorious annotation
+        return:
+            label, list[str] the content in the tagging
+        """
+        word_body = annotation["body"]
+        tagging_list = [text_body["value"] for text_body in word_body
+                        if text_body["purpose"] == "tagging"
+                        ]
+        return tagging_list[0]
+
+    def _process_contour(self, annotation):
+        # get the svg coordinate string
+        contour_string = annotation['target']["selector"]["value"]
+        # convert the string, I rounded the digit to 2 digit decimal,
+        # from the tradition of COCO officially release
+        contour_numeric = [round(float(i),2) for i in re.findall(r"[0-9]+.[0-9]+", contour_string)]
+        # reorganize them into points format
+        points = [[contour_numeric[2*i], contour_numeric[2*i+1]] for i in range(int(len(contour_numeric)/2))]
+        # compute the area -- dtype = float32 is necessary for the following
+        # is not working with float64 or double
+        area = cv2.contourArea(np.array(points, dtype = np.float32))
+        # bounding box, please be noticed that it's [x,y,w,h] format
+        bbox = cv2.boundingRect(np.array(points, dtype = np.float32))
+        return contour_numeric, area, bbox
+
 
     def _from_coco(self, data):
         """
