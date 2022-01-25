@@ -48,7 +48,6 @@ class AnnotoriousInterpreter(_Translater):
         """
         categories = {}
         annotations = []
-        licenses = self._licenses_prepraration()
         images = self._image_processor()
 
         for annotation in data:
@@ -67,15 +66,20 @@ class AnnotoriousInterpreter(_Translater):
                 "id": 0 #TBF here
             })
         categories = self._tidy_categories(categories)
-        return {"licenses":licenses,
+        return {
                 "images":images,
                 "annotations": annotations,
                 "categories": categories
                 }
 
-    def _image_processor(self):
+    def _file_manager(self):
         """
         To be finish: how should I encode with all the images?
+        Args:
+            data: iterable(list[image], list[annotations]) all the data,
+        Return:
+            list[dict]: the "image" field of the coco format
+            dict{int,int}: the 1-many correspondence between image and annotations
         {
         "license": 4,
         "file_name": "000000397133.jpg",
@@ -87,18 +91,7 @@ class AnnotoriousInterpreter(_Translater):
         "id": 397133
         },
         """
-        return []
-
-    def _licenses_prepraration(self):
-        """
-        To be finish: how should I encode with all the license?
-        {
-        "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",
-        "id": 1,
-        "name": "Attribution-NonCommercial-ShareAlike License"
-        },
-        """
-        return []
+        return [],{}
 
     def _tidy_categories(self, categories):
         """
@@ -130,13 +123,13 @@ class AnnotoriousInterpreter(_Translater):
         # convert the string, I rounded the digit to 2 digit decimal,
         # from the tradition of COCO officially release
         contour_numeric = [round(float(i),2) for i in re.findall(r"[0-9]+.[0-9]+", contour_string)]
-        # reorganize them into points format
-        points = [[contour_numeric[2*i], contour_numeric[2*i+1]] for i in range(int(len(contour_numeric)/2))]
+        # reorganize them into points format, and convert it into a contour
+        points = np.array([[contour_numeric[2*i], contour_numeric[2*i+1]]
+                          for i in range(int(len(contour_numeric)/2))],
+                          dtype = np.float32)
         # compute the area -- dtype = float32 is necessary for the following
         # is not working with float64 or double
-        area = cv2.contourArea(np.array(points, dtype = np.float32))
-        # bounding box, please be noticed that it's [x,y,w,h] format
-        bbox = cv2.boundingRect(np.array(points, dtype = np.float32))
+        area, bbox = self._area_and_bbox(points)
         return contour_numeric, area, bbox
 
 

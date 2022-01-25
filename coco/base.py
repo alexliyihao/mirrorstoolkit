@@ -1,5 +1,7 @@
 import json
 from datatime import datetime
+import json
+import os
 
 class ValidationError(ValueError):
     pass
@@ -11,8 +13,8 @@ class _Translater(object):
     segmentation label
 
     All the inheritance please override _set_meta(), _validate_new_format()
-    _to_coco(), and _from_coco() methods, then the class is ready to be called in
-    to_coco() and from_coco public methods
+    _to_coco(), _from_coco(), and _file_manager() methods, then the class is ready to be called in
+    to_coco() and from_coco() public methods, all exceptions are solved internally
     """
 
     def __init__(self):
@@ -131,7 +133,38 @@ class _Translater(object):
                 "date_created": now.strftime("%Y-%M-%dT%H:%M:%S")
             }
 
-    def to_coco(self, data):
+    def _coco_licenses_prepraration(self, path = None):
+        """
+        Prepare the license field
+        if a json file path is not given, a by-nc-sa license is given as default
+        """
+        if path == None:
+            return  {"url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",
+                     "id": 1,
+                     "name": "Attribution-NonCommercial-ShareAlike License"
+                    }
+        else:
+            try:
+                assert os.path.splitext(path)[1] == ".json"
+            except AssertionError:
+                print("The license file is not a valid json file")
+            else:
+                return json.load(path)
+
+    def _area_and_bbox(self, contours):
+        """
+        utility functions compute the area and bounding boxes
+        args:
+            points, list[list[float,float]], the points of the contour
+        """
+        # compute the area -- dtype = float32 is necessary for the following
+        # is not working with float64 or double
+        area = cv2.contourArea(np.array(points, dtype = np.float32))
+        # bounding box, please be noticed that it's [x,y,w,h] format
+        bbox = cv2.boundingRect(np.array(points, dtype = np.float32))
+        return area, bbox
+
+    def to_coco(self, data, license_file):
         """
         The wrapper including the complete procedure translating the data to COCO
         please be noticed that data is ONE parameter
@@ -143,6 +176,7 @@ class _Translater(object):
         else:
             coco_output = self._to_coco(data)
             coco_output["info"] = self._coco_meta()
+            coco_output["licenses"] = self._coco_licenses_prepraration(license_file)
             return coco_output
 
     def from_coco(self, data):

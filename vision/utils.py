@@ -2,6 +2,29 @@ import PIL.Image as Img
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import cv2
+
+def cvread(src):
+    """
+    read a image with cv2, I have to say the change in plt.imread is not that good...
+    Args:
+        src: the path of the image
+    returns:
+        np.ndarray, the image in 3-channel RGB format
+    """
+    img = cv2.imread("/Users/alexli/Desktop/plant_book_mask.png")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return img
+
+def unique_color(img):
+    """
+    get all the unique colors in a np.ndarray
+    Args:
+        img: 3D np.ndarray, the image
+    Returns:
+        np.ndarray, an array including all the individual colors
+    """
+    return np.unique(img.reshape(-1, img.shape[2]), axis=0)
 
 def crop_image(img):
     """
