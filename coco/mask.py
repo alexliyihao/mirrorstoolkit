@@ -154,7 +154,7 @@ class MaskInterpreter(_Translater):
                 "image_id": annotation_dict[id], # To be finished
                 "iscrowd":0,
                 "area": area}
-
+#-------------------------The following is interpreting coco to mask------------------
     def _from_coco(self, dst, coco_data, mode = "color", palette = "viridis"):
         """
         translate the COCO format data to mask format
@@ -189,7 +189,7 @@ class MaskInterpreter(_Translater):
                                                segmentation = annotation["segmentation"],
                                                color = categories[annotation["category_id"]]["color"])
 
-            file_name = f'{image["file_name"]}_mask.png'
+            file_name = self._output_file_name(dst, image)
             # write the image out -- it's for consideration on memory and just in case the
             # dataset might be extremely large
             cv2.imwrite(os.path.join(dst, file_name), canvas)
@@ -199,7 +199,11 @@ class MaskInterpreter(_Translater):
             gc.collect()
         return (dst, path_dict)
 
-
+    def _output_file_name(self, dst, image):
+        """
+        generate a output file name
+        """
+        output_path = f'{image["id"]}_{image["file_name"]}_mask.png'
 
     def _extract_categories(self, coco_category, mode = "color", palette = "viridis"):
         """

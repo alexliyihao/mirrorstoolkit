@@ -8,6 +8,6 @@ def coco_contour_to_cv2(contour, dtype):
         contour: list, the coco format contour
         dtype: the dtype of output needed, cv2 is a little bit weird on the dtype
     """
-    return np.array([[[segmentation[2*i], segmentation[2*i+1]]]
-                      for i in range(int(len(segmentation)/2))],
+    return np.array([[[contour[2*i], contour[2*i+1]]]
+                      for i in range(int(len(contour)/2))],
                       dtype = dtype)

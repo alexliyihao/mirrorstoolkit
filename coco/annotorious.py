@@ -2,6 +2,8 @@ from .base import _Translater
 from .utils import coco_contour_to_cv2
 import re
 import cv2
+import json
+import gc
 
 class AnnotoriousInterpreter(_Translater):
     """
@@ -131,9 +133,93 @@ class AnnotoriousInterpreter(_Translater):
         area, bbox = self._area_and_bbox(points)
         return contour_numeric, area, bbox
 
+#-------------------------The following is interpreting coco to annotorious------------------
 
-    def _from_coco(self, data):
+    def _from_coco(self, dst, coco_data):
         """
         translate the COCO format data to the annotorious annotations format
         """
-        pass
+        # check if dst is there, if not create one
+        os.makedirs(dst, exist_ok = True)
+        # distribute a color for all the categories
+        category_dict = self._extract_categories(coco_data["categories"])
+        # generate a path dict for output
+        path_dict = {}
+        # for each image
+        for image in coco_data["images"]:
+            # filter all the annotation which belongs to this image
+            annotations = [annotation in coco_data["annotations"] if annotation["image_id"] = image["id"]]
+            # translate all the related annotations into jsons
+            annotation_jsons = [anno for annotation in annotations for anno in self._interpret_annotation(annotation, category_dict)]
+            # define the output path
+            file_name = self._output_file_name(dst, image)
+            with open(os.path.join(dst, file_name), 'w') as output:
+                json.dump(data, output, ensure_ascii=False)
+            path_dict[image["id"]] = file_name
+            gc.collect()
+        return (dst, path_dict)
+
+    def _output_file_name(self, dst, image):
+        """
+        generate a output file name
+        """
+        output_path = f'{image["id"]}_{image["file_name"]}.w3c.json'
+
+    def _extract_categories(self, coco_category):
+        """
+        extract category information from coco_data for fast access
+        Args:
+            coco_category: json/dict instance, the category data
+        Return:
+            category_dict: dict, the dict key is category id, and value is category_name
+        """
+        return {category["id"]:category["name"]} for category in coco_category}
+
+    def _interpret_annotation(self, annotation, category_dict):
+        """
+        given a COCO annotation segmentation (one annotation in ["annotation"]),
+        translate the format to a readable svg selector string
+        args:
+            contour: list, the segmentation contour of the annotation
+        returns:
+            polygon: string, the svg selector in Annotorious form
+        """
+        segmentation = annotation['segmentation']
+        category_name = category_dict[annotation['category_id']]
+        # each annotation may have more than one contours in their segmentation field
+        polygon_strings = [self._formatting_annotation(contours, category_name) for contours in segmentation]
+        return polygon_strings
+
+    def _formatting_annotation(self, contour, category_name):
+        """
+        formatting the annotation output into W3C Annotorious format
+        the class label should be in TextualBody - tagging
+        The svg selector string is from self._interpret_polygon()
+        """
+        return {
+            "type": "Annotation",
+            "body":[
+            {"type": "TextualBody", "value": category_name, "purpose": "tagging"}
+            ],
+            "target":{"selector":
+            {"type": "SvgSelector",
+             "value": self._interpret_polygon(contour)}
+            },
+            "@context": "http://www.w3.org/ns/anno.jsonld",
+            "id": "#725470be-7239-4e17-9850-48583eb7c2a5"
+        }
+
+    def _interpret_polygon(self, contour):
+        """
+        given a COCO annotation segmentation (one contour in ["segmentation"]),
+        translate the format to a readable svg selector string
+        args:
+            contour: list, the segmentation contour of the annotation
+        returns:
+            polygon: string, the svg selector in Annotorious form
+        """
+        contour = [[contour[2*i], contour[2*i+1]] for i in range(int(len(contour)/2))]
+        points = " ".join([",".join([str(points[0]), str(points[1])]) for points in contour])
+        prefix = '"<svg><polygon points=\\"'
+        suffix = '\\"/></svg>"'
+        return f"{prefix}{points}{suffix}"
