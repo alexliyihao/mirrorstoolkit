@@ -1,4 +1,5 @@
 from .base import _Translater
+from .utils import coco_contour_to_cv2
 import re
 import cv2
 
@@ -124,9 +125,7 @@ class AnnotoriousInterpreter(_Translater):
         # from the tradition of COCO officially release
         contour_numeric = [round(float(i),2) for i in re.findall(r"[0-9]+.[0-9]+", contour_string)]
         # reorganize them into points format, and convert it into a contour
-        points = np.array([[contour_numeric[2*i], contour_numeric[2*i+1]]
-                          for i in range(int(len(contour_numeric)/2))],
-                          dtype = np.float32)
+        points = coco_contour_to_cv2(contour_numeric, dtype = np.float32)
         # compute the area -- dtype = float32 is necessary for the following
         # is not working with float64 or double
         area, bbox = self._area_and_bbox(points)

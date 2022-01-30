@@ -164,7 +164,7 @@ class _Translater(object):
         bbox = cv2.boundingRect(np.array(points, dtype = np.float32))
         return area, bbox
 
-    def to_coco(self, data, license_file):
+    def to_coco(self, data, license_file, **kwargs):
         """
         The wrapper including the complete procedure translating the data to COCO
         please be noticed that data is ONE parameter
@@ -174,12 +174,12 @@ class _Translater(object):
         except ValidationError as e:
             return str(e)
         else:
-            coco_output = self._to_coco(data)
+            coco_output = self._to_coco(data,license_file,**kwargs)
             coco_output["info"] = self._coco_meta()
             coco_output["licenses"] = self._coco_licenses_prepraration(license_file)
             return coco_output
 
-    def from_coco(self, data):
+    def from_coco(self, dst, data, **kwargs):
         """
         The wrapper including the complete procedure
         translating COCO to specific format
@@ -189,5 +189,5 @@ class _Translater(object):
         except ValidationError as e:
             return str(e)
         else:
-            format_output = self._from_coco(data)
+            format_output = self._from_coco(dst,data,**kwargs)
             return format_output
